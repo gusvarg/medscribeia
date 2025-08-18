@@ -9,7 +9,7 @@ interface AuthContextType {
   loading: boolean;
   userRole: string | null;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, firstName: string, lastName: string, specialty?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
 
@@ -109,7 +109,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const signUp = async (email: string, password: string, firstName: string, lastName: string) => {
+  const signUp = async (email: string, password: string, firstName: string, lastName: string, specialty?: string) => {
     try {
       const redirectUrl = `${window.location.origin}/dashboard`;
       
@@ -121,6 +121,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           data: {
             first_name: firstName,
             last_name: lastName,
+            specialty: specialty,
           }
         }
       });

@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Stethoscope, Brain, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MEDICAL_SPECIALTIES } from '@/constants/medicalSpecialties';
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -43,8 +45,9 @@ const Auth = () => {
     const password = formData.get('password') as string;
     const firstName = formData.get('firstName') as string;
     const lastName = formData.get('lastName') as string;
+    const specialty = formData.get('specialty') as string;
 
-    const { error } = await signUp(email, password, firstName, lastName);
+    const { error } = await signUp(email, password, firstName, lastName, specialty);
 
     if (error) {
       toast({
@@ -178,6 +181,21 @@ const Auth = () => {
                             required
                           />
                         </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="specialty">Especialidad Médica</Label>
+                        <Select name="specialty" required>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona tu especialidad" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-60">
+                            {MEDICAL_SPECIALTIES.map((specialty) => (
+                              <SelectItem key={specialty} value={specialty}>
+                                {specialty}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="signup-email">Email</Label>
