@@ -8,6 +8,13 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
+import Patients from "./pages/Patients";
+import Consultations from "./pages/Consultations";
+import Transcriptions from "./pages/Transcriptions";
+import Calendar from "./pages/Calendar";
+import AITools from "./pages/AITools";
+import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
 import Analytics from "./pages/admin/Analytics";
 import Users from "./pages/admin/Users";
 import Payments from "./pages/admin/Payments";
@@ -28,6 +35,13 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/patients" element={<Patients />} />
+            <Route path="/consultations" element={<Consultations />} />
+            <Route path="/transcriptions" element={<Transcriptions />} />
+            <Route path="/calendar" element={<Calendar />} />
+            <Route path="/ai-tools" element={<AITools />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/admin/analytics" element={<Analytics />} />
             <Route path="/admin/users" element={<Users />} />
             <Route path="/admin/plans" element={<Plans />} />
