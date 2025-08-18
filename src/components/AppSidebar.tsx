@@ -33,6 +33,8 @@ import {
   User2,
   LogOut,
   Stethoscope,
+  Package,
+  DollarSign,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
@@ -81,9 +83,24 @@ const adminItems = [
     icon: Shield,
   },
   {
+    title: "Planes",
+    url: "/admin/plans",
+    icon: Package,
+  },
+  {
+    title: "Métodos de Pago",
+    url: "/admin/payment-methods",
+    icon: CreditCard,
+  },
+  {
+    title: "Configuración IA",
+    url: "/admin/ai-configs",
+    icon: Brain,
+  },
+  {
     title: "Pagos",
     url: "/admin/payments",
-    icon: CreditCard,
+    icon: DollarSign,
   },
 ];
 

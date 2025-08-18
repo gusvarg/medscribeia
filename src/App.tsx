@@ -11,6 +11,9 @@ import NotFound from "./pages/NotFound";
 import Analytics from "./pages/admin/Analytics";
 import Users from "./pages/admin/Users";
 import Payments from "./pages/admin/Payments";
+import Plans from "./pages/admin/Plans";
+import PaymentMethods from "./pages/admin/PaymentMethods";
+import AIConfigs from "./pages/admin/AIConfigs";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +30,9 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/admin/analytics" element={<Analytics />} />
             <Route path="/admin/users" element={<Users />} />
+            <Route path="/admin/plans" element={<Plans />} />
+            <Route path="/admin/payment-methods" element={<PaymentMethods />} />
+            <Route path="/admin/ai-configs" element={<AIConfigs />} />
             <Route path="/admin/payments" element={<Payments />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
