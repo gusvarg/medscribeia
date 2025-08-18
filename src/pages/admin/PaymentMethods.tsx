@@ -111,13 +111,42 @@ export default function PaymentMethods() {
 
   const fetchPaymentMethods = async () => {
     try {
-      const { data, error } = await supabase
-        .from('payment_methods_config')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setPaymentMethods(data || []);
+      // TODO: Replace with actual database call once tables are created
+      const mockMethods: PaymentMethod[] = [
+        {
+          id: '1',
+          name: 'MercadoPago Colombia',
+          type: 'mercadopago',
+          description: 'Configuración principal de MercadoPago para Colombia',
+          is_active: true,
+          country_code: 'CO',
+          config: {
+            access_token: '••••••••••••••••',
+            public_key: '••••••••••••••••',
+            webhook_url: 'https://tudominio.com/webhook/mercadopago',
+            environment: 'sandbox'
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        },
+        {
+          id: '2',
+          name: 'PayPal Colombia',
+          type: 'paypal',
+          description: 'Configuración de PayPal para pagos internacionales',
+          is_active: false,
+          country_code: 'CO',
+          config: {
+            client_id: '••••••••••••••••',
+            client_secret: '••••••••••••••••',
+            webhook_url: 'https://tudominio.com/webhook/paypal',
+            environment: 'sandbox'
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      ];
+      setPaymentMethods(mockMethods);
     } catch (error) {
       console.error('Error fetching payment methods:', error);
       toast({
@@ -151,19 +180,9 @@ export default function PaymentMethods() {
         }
       };
 
-      let error;
-      if (editingMethod) {
-        ({ error } = await supabase
-          .from('payment_methods_config')
-          .update(methodData)
-          .eq('id', editingMethod.id));
-      } else {
-        ({ error } = await supabase
-          .from('payment_methods_config')
-          .insert([methodData]));
-      }
-
-      if (error) throw error;
+      // TODO: Replace with actual database operations once tables are created
+      console.log('Mock save operation:', methodData);
+      // Simulate success for now
 
       toast({
         title: editingMethod ? "Método actualizado" : "Método creado",
@@ -206,12 +225,8 @@ export default function PaymentMethods() {
     if (!confirm('¿Estás seguro de que quieres eliminar este método de pago?')) return;
 
     try {
-      const { error } = await supabase
-        .from('payment_methods_config')
-        .delete()
-        .eq('id', methodId);
-
-      if (error) throw error;
+      // TODO: Replace with actual database operation once tables are created
+      console.log('Mock delete operation:', methodId);
 
       toast({
         title: "Método eliminado",
@@ -231,12 +246,8 @@ export default function PaymentMethods() {
 
   const toggleMethodStatus = async (methodId: string, isActive: boolean) => {
     try {
-      const { error } = await supabase
-        .from('payment_methods_config')
-        .update({ is_active: !isActive })
-        .eq('id', methodId);
-
-      if (error) throw error;
+      // TODO: Replace with actual database operation once tables are created
+      console.log('Mock toggle operation:', methodId, !isActive);
 
       toast({
         title: isActive ? "Método desactivado" : "Método activado",

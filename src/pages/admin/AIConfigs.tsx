@@ -149,13 +149,31 @@ export default function AIConfigs() {
 
   const fetchAIConfigs = async () => {
     try {
-      const { data, error } = await supabase
-        .from('ai_configs')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setAIConfigs(data || []);
+      // TODO: Replace with actual database call once tables are created
+      const mockConfigs: AIConfig[] = [
+        {
+          id: '1',
+          name: 'OpenAI GPT-4 Colombia',
+          provider: 'openai',
+          model: 'gpt-4',
+          description: 'Configuración principal para Colombia',
+          is_active: true,
+          country_code: 'CO',
+          config: {
+            api_key: '••••••••••••••••',
+            base_url: 'https://api.openai.com/v1',
+            max_tokens: 4000,
+            temperature: 0.7,
+            top_p: 1,
+            frequency_penalty: 0,
+            presence_penalty: 0,
+            system_prompt: 'Eres un asistente médico especializado en Colombia.'
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      ];
+      setAIConfigs(mockConfigs);
     } catch (error) {
       console.error('Error fetching AI configs:', error);
       toast({
@@ -217,19 +235,9 @@ export default function AIConfigs() {
         }
       };
 
-      let error;
-      if (editingConfig) {
-        ({ error } = await supabase
-          .from('ai_configs')
-          .update(configData)
-          .eq('id', editingConfig.id));
-      } else {
-        ({ error } = await supabase
-          .from('ai_configs')
-          .insert([configData]));
-      }
-
-      if (error) throw error;
+      // TODO: Replace with actual database operations once tables are created
+      console.log('Mock save operation:', configData);
+      // Simulate success for now
 
       toast({
         title: editingConfig ? "Configuración actualizada" : "Configuración creada",
@@ -275,12 +283,8 @@ export default function AIConfigs() {
     if (!confirm('¿Estás seguro de que quieres eliminar esta configuración de IA?')) return;
 
     try {
-      const { error } = await supabase
-        .from('ai_configs')
-        .delete()
-        .eq('id', configId);
-
-      if (error) throw error;
+      // TODO: Replace with actual database operation once tables are created
+      console.log('Mock delete operation:', configId);
 
       toast({
         title: "Configuración eliminada",
@@ -300,12 +304,8 @@ export default function AIConfigs() {
 
   const toggleConfigStatus = async (configId: string, isActive: boolean) => {
     try {
-      const { error } = await supabase
-        .from('ai_configs')
-        .update({ is_active: !isActive })
-        .eq('id', configId);
-
-      if (error) throw error;
+      // TODO: Replace with actual database operation once tables are created
+      console.log('Mock toggle operation:', configId, !isActive);
 
       toast({
         title: isActive ? "Configuración desactivada" : "Configuración activada",

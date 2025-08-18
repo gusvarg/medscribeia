@@ -85,13 +85,38 @@ export default function Plans() {
 
   const fetchPlans = async () => {
     try {
-      const { data, error } = await supabase
-        .from('subscription_plans')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setPlans(data || []);
+      // TODO: Replace with actual database call once tables are created
+      const mockPlans: Plan[] = [
+        {
+          id: '1',
+          name: 'Plan Básico',
+          description: 'Plan básico para consultorios pequeños',
+          price: 99000,
+          currency: 'COP',
+          billing_cycle: 'monthly',
+          features: ['5 consultas por mes', 'Transcripción básica', 'Soporte por email'],
+          is_active: true,
+          stripe_price_id: 'price_basic_cop',
+          paypal_plan_id: '',
+          mercadopago_plan_id: 'MP-BASIC-001',
+          created_at: new Date().toISOString()
+        },
+        {
+          id: '2',
+          name: 'Plan Profesional',
+          description: 'Plan profesional para consultorios medianos',
+          price: 199000,
+          currency: 'COP',
+          billing_cycle: 'monthly',
+          features: ['50 consultas por mes', 'IA avanzada', 'Análisis detallado', 'Soporte prioritario'],
+          is_active: true,
+          stripe_price_id: 'price_pro_cop',
+          paypal_plan_id: '',
+          mercadopago_plan_id: 'MP-PRO-001',
+          created_at: new Date().toISOString()
+        }
+      ];
+      setPlans(mockPlans);
     } catch (error) {
       console.error('Error fetching plans:', error);
       toast({
@@ -121,19 +146,9 @@ export default function Plans() {
         mercadopago_plan_id: formData.mercadopago_plan_id || null
       };
 
-      let error;
-      if (editingPlan) {
-        ({ error } = await supabase
-          .from('subscription_plans')
-          .update(planData)
-          .eq('id', editingPlan.id));
-      } else {
-        ({ error } = await supabase
-          .from('subscription_plans')
-          .insert([planData]));
-      }
-
-      if (error) throw error;
+      // TODO: Replace with actual database operations once tables are created
+      console.log('Mock save operation:', planData);
+      // Simulate success for now
 
       toast({
         title: editingPlan ? "Plan actualizado" : "Plan creado",
@@ -174,12 +189,8 @@ export default function Plans() {
     if (!confirm('¿Estás seguro de que quieres eliminar este plan?')) return;
 
     try {
-      const { error } = await supabase
-        .from('subscription_plans')
-        .delete()
-        .eq('id', planId);
-
-      if (error) throw error;
+      // TODO: Replace with actual database operation once tables are created
+      console.log('Mock delete operation:', planId);
 
       toast({
         title: "Plan eliminado",
@@ -199,12 +210,8 @@ export default function Plans() {
 
   const togglePlanStatus = async (planId: string, isActive: boolean) => {
     try {
-      const { error } = await supabase
-        .from('subscription_plans')
-        .update({ is_active: !isActive })
-        .eq('id', planId);
-
-      if (error) throw error;
+      // TODO: Replace with actual database operation once tables are created
+      console.log('Mock toggle operation:', planId, !isActive);
 
       toast({
         title: isActive ? "Plan desactivado" : "Plan activado",
