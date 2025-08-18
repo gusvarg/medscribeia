@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -81,10 +81,10 @@ const Index = () => {
           </div>
           <div className="flex items-center gap-4">
             <Button variant="ghost" asChild>
-              <a href="/auth">Iniciar Sesión</a>
+              <Link to="/auth">Iniciar Sesión</Link>
             </Button>
             <Button asChild>
-              <a href="/auth">Comenzar Gratis</a>
+              <Link to="/auth">Comenzar Gratis</Link>
             </Button>
           </div>
         </div>
@@ -102,10 +102,10 @@ const Index = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" className="text-lg px-8" asChild>
-              <a href="/auth">
+              <Link to="/auth">
                 Comenzar Prueba Gratuita
                 <ArrowRight className="ml-2 h-5 w-5" />
-              </a>
+              </Link>
             </Button>
             <Button variant="outline" size="lg" className="text-lg px-8">
               Ver Demo en Vivo
@@ -228,10 +228,10 @@ const Index = () => {
             Únete a miles de médicos que ya están usando MedScribe AI para mejorar su práctica médica
           </p>
           <Button size="lg" variant="secondary" className="text-lg px-8" asChild>
-            <a href="/auth">
+            <Link to="/auth">
               Comenzar Ahora - Es Gratis
               <ArrowRight className="ml-2 h-5 w-5" />
-            </a>
+            </Link>
           </Button>
         </div>
       </section>

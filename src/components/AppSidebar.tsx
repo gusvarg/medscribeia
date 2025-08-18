@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { Link, useLocation } from 'react-router-dom';
 import {
   Sidebar,
   SidebarContent,
@@ -114,8 +115,10 @@ const settingsItems = [
 
 export function AppSidebar() {
   const { user, userRole, signOut } = useAuth();
+  const location = useLocation();
 
   const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+  const isActive = (path: string) => location.pathname === path;
 
   return (
     <Sidebar>
@@ -136,11 +139,11 @@ export function AppSidebar() {
             <SidebarMenu>
               {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <a href={item.url}>
+                  <SidebarMenuButton asChild className={isActive(item.url) ? "bg-accent text-accent-foreground" : ""}>
+                    <Link to={item.url}>
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
-                    </a>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -155,11 +158,11 @@ export function AppSidebar() {
               <SidebarMenu>
                 {adminItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <a href={item.url}>
+                    <SidebarMenuButton asChild className={isActive(item.url) ? "bg-accent text-accent-foreground" : ""}>
+                      <Link to={item.url}>
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
-                      </a>
+                      </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
@@ -174,11 +177,11 @@ export function AppSidebar() {
             <SidebarMenu>
               {settingsItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <a href={item.url}>
+                  <SidebarMenuButton asChild className={isActive(item.url) ? "bg-accent text-accent-foreground" : ""}>
+                    <Link to={item.url}>
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
-                    </a>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -207,10 +210,10 @@ export function AppSidebar() {
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" className="w-[--radix-popper-anchor-width]">
                 <DropdownMenuItem asChild>
-                  <a href="/profile">
+                  <Link to="/profile">
                     <User2 className="mr-2 h-4 w-4" />
                     Perfil
-                  </a>
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={signOut}>
                   <LogOut className="mr-2 h-4 w-4" />

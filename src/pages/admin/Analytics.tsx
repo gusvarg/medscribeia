@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { AdminLayout } from '@/components/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -116,38 +117,25 @@ export default function Analytics() {
     }
   };
 
-  if (userRole !== 'admin' && userRole !== 'super_admin') {
-    return (
-      <div className="p-6">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-destructive">Acceso Denegado</h2>
-          <p className="text-muted-foreground mt-2">No tienes permisos para acceder a esta página.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="p-6">
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader className="pb-3">
-                <div className="h-4 bg-muted rounded w-20"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="h-8 bg-muted rounded w-16"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="p-6 space-y-6">
+    <AdminLayout requireAdmin={true}>
+      {loading ? (
+        <div className="p-6">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {[...Array(4)].map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardHeader className="pb-3">
+                  <div className="h-4 bg-muted rounded w-20"></div>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-8 bg-muted rounded w-16"></div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Panel de Analíticas</h1>
         <Badge variant="secondary">
@@ -248,7 +236,9 @@ export default function Analytics() {
             </div>
           </CardContent>
         </Card>
-      </div>
-    </div>
+        </div>
+        </div>
+      )}
+    </AdminLayout>
   );
 }
