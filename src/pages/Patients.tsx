@@ -30,6 +30,7 @@ const patientSchema = z.object({
   medical_history: z.string().optional(),
   allergies: z.string().optional(),
   current_medications: z.string().optional(),
+  consultorio_id: z.string().optional(),
 });
 
 type PatientFormValues = z.infer<typeof patientSchema>;
@@ -55,6 +56,7 @@ export default function Patients() {
       medical_history: '',
       allergies: '',
       current_medications: '',
+      consultorio_id: '',
     },
   });
 
@@ -70,6 +72,20 @@ export default function Patients() {
     },
   });
 
+  const { data: consultorios } = useQuery({
+    queryKey: ['consultorios'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('consultorios')
+        .select('id, name, address')
+        .eq('user_id', user?.id)
+        .order('name');
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!user,
+  });
+
   const addPatient = useMutation({
     mutationFn: async (values: PatientFormValues) => {
       if (!user) throw new Error('No autenticado');
@@ -77,6 +93,7 @@ export default function Patients() {
         ...values,
         user_id: user.id,
         date_of_birth: values.date_of_birth && values.date_of_birth !== '' ? values.date_of_birth : null,
+        consultorio_id: values.consultorio_id && values.consultorio_id !== '' ? values.consultorio_id : null,
       };
       const { data, error } = await supabase
         .from('patients')
@@ -300,6 +317,33 @@ export default function Patients() {
                         </FormItem>
                       )}
                     />
+
+                    {consultorios && consultorios.length > 0 && (
+                      <FormField
+                        control={form.control}
+                        name="consultorio_id"
+                        render={({ field }) => (
+                          <FormItem className="md:col-span-2">
+                            <FormLabel>Consultorio</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecciona un consultorio" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {consultorios.map((consultorio) => (
+                                  <SelectItem key={consultorio.id} value={consultorio.id}>
+                                    {consultorio.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
                   </div>
 
                   <DialogFooter>

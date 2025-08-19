@@ -30,6 +30,7 @@ interface Consultation {
   assessment: string | null;
   plan: string | null;
   notes: string | null;
+  consultorio_id?: string | null;
   patients: {
     id: string;
     first_name: string;
@@ -48,16 +49,19 @@ export default function Consultations() {
   const [searchTerm, setSearchTerm] = useState('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [selectedConsultorio, setSelectedConsultorio] = useState('');
+  const [consultorios, setConsultorios] = useState<Array<{id: string; name: string}>>([]);
 
   useEffect(() => {
     if (user) {
       fetchConsultations();
+      fetchConsultorios();
     }
   }, [user]);
 
   useEffect(() => {
     filterConsultations();
-  }, [consultations, searchTerm, dateRange]);
+  }, [consultations, searchTerm, dateRange, selectedConsultorio]);
 
 
   const fetchConsultations = async () => {
@@ -89,6 +93,21 @@ export default function Consultations() {
       setConsultations(data || []);
     } catch (error) {
       console.error('Error fetching consultations:', error);
+    }
+  };
+
+  const fetchConsultorios = async () => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from('consultorios')
+        .select('id, name')
+        .eq('user_id', user?.id)
+        .order('name');
+
+      if (error) throw error;
+      setConsultorios(data || []);
+    } catch (error) {
+      console.error('Error fetching consultorios:', error);
     }
   };
 
@@ -127,6 +146,11 @@ export default function Consultations() {
       });
     }
 
+    // Consultorio filter - temporarily disabled until consultorio_id is added to consultations table
+    // if (selectedConsultorio) {
+    //   filtered = filtered.filter(consultation => consultation.consultorio_id === selectedConsultorio);
+    // }
+
     setFilteredConsultations(filtered);
   };
 
@@ -158,7 +182,7 @@ export default function Consultations() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Buscar en consultas</Label>
                 <Input
@@ -244,6 +268,24 @@ export default function Consultations() {
                   </PopoverContent>
                 </Popover>
               </div>
+
+              {consultorios.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Filtrar por consultorio</Label>
+                  <select
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    value={selectedConsultorio}
+                    onChange={(e) => setSelectedConsultorio(e.target.value)}
+                  >
+                    <option value="">Todos los consultorios</option>
+                    {consultorios.map((consultorio) => (
+                      <option key={consultorio.id} value={consultorio.id}>
+                        {consultorio.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

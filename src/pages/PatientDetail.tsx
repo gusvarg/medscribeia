@@ -47,6 +47,7 @@ interface ConsultationFormData {
   assessment: string;
   plan: string;
   notes: string;
+  consultorio_id: string;
 }
 
 export default function PatientDetail() {
@@ -74,7 +75,8 @@ export default function PatientDetail() {
     physical_examination: '',
     assessment: '',
     plan: '',
-    notes: ''
+    notes: '',
+    consultorio_id: ''
   });
   const [savingConsultation, setSavingConsultation] = useState(false);
 
@@ -82,8 +84,11 @@ export default function PatientDetail() {
     if (id && user) {
       fetchPatientData();
       fetchConsultations();
+      fetchConsultorios();
     }
   }, [id, user]);
+
+  const [consultorios, setConsultorios] = useState<Array<{id: string; name: string; address: string}>>([]);
 
   // Handle URL tab parameter and consultation ID
   useEffect(() => {
@@ -149,6 +154,21 @@ export default function PatientDetail() {
     }
   };
 
+  const fetchConsultorios = async () => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from('consultorios')
+        .select('id, name, address')
+        .eq('user_id', user?.id)
+        .order('name');
+
+      if (error) throw error;
+      setConsultorios(data || []);
+    } catch (error: any) {
+      console.error('Error fetching consultorios:', error);
+    }
+  };
+
   const handleAIChat = async (question: string) => {
     if (!question.trim() || !id) return;
 
@@ -190,7 +210,8 @@ export default function PatientDetail() {
       physical_examination: data.examenFisico || '',
       assessment: data.impresionDiagnostica || '',
       plan: data.plan || '',
-      notes: data.analisisDelCaso || ''
+      notes: data.analisisDelCaso || '',
+      consultorio_id: ''
     });
     setShowNewConsultation(true);
     setActiveTab('new-consultation');
@@ -218,6 +239,7 @@ export default function PatientDetail() {
           patient_id: id,
           user_id: user.id,
           consultation_date: new Date().toISOString(),
+          consultorio_id: consultationForm.consultorio_id || null,
           ...consultationForm
         })
         .select()
@@ -237,7 +259,8 @@ export default function PatientDetail() {
         physical_examination: '',
         assessment: '',
         plan: '',
-        notes: ''
+        notes: '',
+        consultorio_id: ''
       });
       setShowNewConsultation(false);
       setActiveTab('consultations');
@@ -620,6 +643,27 @@ export default function PatientDetail() {
                       rows={3}
                     />
                   </div>
+
+                  {consultorios.length > 0 && (
+                    <div className="space-y-2 md:col-span-2">
+                      <Label>Consultorio</Label>
+                      <select
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        value={consultationForm.consultorio_id}
+                        onChange={(e) => setConsultationForm(prev => ({
+                          ...prev,
+                          consultorio_id: e.target.value
+                        }))}
+                      >
+                        <option value="">Seleccionar consultorio</option>
+                        {consultorios.map((consultorio) => (
+                          <option key={consultorio.id} value={consultorio.id}>
+                            {consultorio.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
