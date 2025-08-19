@@ -186,6 +186,7 @@ export type Database = {
           assessment: string | null
           chief_complaint: string | null
           consultation_date: string
+          consultorio_id: string | null
           created_at: string
           history_present_illness: string | null
           id: string
@@ -201,6 +202,7 @@ export type Database = {
           assessment?: string | null
           chief_complaint?: string | null
           consultation_date?: string
+          consultorio_id?: string | null
           created_at?: string
           history_present_illness?: string | null
           id?: string
@@ -216,6 +218,7 @@ export type Database = {
           assessment?: string | null
           chief_complaint?: string | null
           consultation_date?: string
+          consultorio_id?: string | null
           created_at?: string
           history_present_illness?: string | null
           id?: string
@@ -228,6 +231,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "consultations_consultorio_id_fkey"
+            columns: ["consultorio_id"]
+            isOneToOne: false
+            referencedRelation: "consultorios"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "consultations_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
@@ -236,10 +246,38 @@ export type Database = {
           },
         ]
       }
+      consultorios: {
+        Row: {
+          address: string | null
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       patients: {
         Row: {
           address: string | null
           allergies: string | null
+          consultorio_id: string | null
           created_at: string
           current_medications: string | null
           date_of_birth: string | null
@@ -259,6 +297,7 @@ export type Database = {
         Insert: {
           address?: string | null
           allergies?: string | null
+          consultorio_id?: string | null
           created_at?: string
           current_medications?: string | null
           date_of_birth?: string | null
@@ -278,6 +317,7 @@ export type Database = {
         Update: {
           address?: string | null
           allergies?: string | null
+          consultorio_id?: string | null
           created_at?: string
           current_medications?: string | null
           date_of_birth?: string | null
@@ -294,7 +334,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "patients_consultorio_id_fkey"
+            columns: ["consultorio_id"]
+            isOneToOne: false
+            referencedRelation: "consultorios"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payments: {
         Row: {
