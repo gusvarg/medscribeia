@@ -39,10 +39,24 @@ serve(async (req) => {
       throw new Error('Patient ID and question are required');
     }
 
-    // Get Supabase client
+    // Get authorization header
+    const authorization = req.headers.get('Authorization');
+    if (!authorization) {
+      throw new Error('Missing authorization header');
+    }
+
+    // Get Supabase client with user auth
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      global: { headers: { Authorization: authorization } }
+    });
+
+    // Verify user authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      throw new Error('Invalid or expired authentication token');
+    }
 
     // Get patient's complete medical history
     const { data: consultations, error } = await supabase
