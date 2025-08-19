@@ -1,578 +1,462 @@
-import React, { useMemo, useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, Plus, Eye, Brain, Mic, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { User, Plus, Mic, MicOff, Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { toast } from 'sonner';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 // Colombian EPS list
 const COLOMBIAN_EPS = [
-  'Aliansalud EPS', 'Asociación Mutual La Esperanza', 'Capital Salud EPS', 'Capresoca EPS',
-  'Compensar EPS', 'Comfenalco Valle EPS', 'Coomeva EPS', 'EPS Coosalud',
-  'EPS Famisanar', 'EPS Sanitas', 'EPS SURA', 'Ferrocarriles', 'Mutual Ser ESS',
-  'Nueva EPS', 'Régimen Subsidiado', 'Salud Total EPS', 'Servicio Occidental de Salud EPS SOS'
+  'EPS SURA',
+  'Nueva EPS',
+  'Salud Total',
+  'Compensar',
+  'Famisanar',
+  'Sanitas',
+  'Coomeva',
+  'Aliansalud',
+  'Medimás',
+  'Cruz Blanca',
+  'Golden Group',
+  'Servicio Occidental de Salud SOS',
+  'Coosalud',
+  'Comfenalco Valle',
+  'Cafesalud',
+  'Régimen Subsidiado',
+  'Otra'
 ];
 
 const DOCUMENT_TYPES = [
-  { value: 'CC', label: 'Cédula de Ciudadanía (CC)' },
-  { value: 'TI', label: 'Tarjeta de Identidad (TI)' },
+  { value: 'CC', label: 'Cédula de Ciudadanía' },
+  { value: 'TI', label: 'Tarjeta de Identidad' },
   { value: 'DNI', label: 'DNI' },
   { value: 'PP', label: 'Pasaporte' },
-  { value: 'CE', label: 'Cédula de Extranjería (CE)' }
+  { value: 'CE', label: 'Cédula de Extranjería' }
 ];
 
-const patientSchema = z.object({
-  full_name: z.string().min(1, 'El nombre completo es obligatorio'),
-  document_type: z.string().min(1, 'El tipo de documento es obligatorio'),
-  document_number: z.string().min(1, 'El número de documento es obligatorio'),
-  eps: z.string().min(1, 'La EPS es obligatoria'),
-  phone: z.string().min(1, 'El teléfono es obligatorio'),
-  email: z.string().email('Email inválido').min(1, 'El correo electrónico es obligatorio'),
-  consultorio_id: z.string().optional(),
-});
+interface Patient {
+  id: string;
+  first_name: string;
+  last_name: string;
+  document_type: string | null;
+  document_number: string | null;
+  eps: string | null;
+  phone: string | null;
+  email: string | null;
+  consultorio_id: string | null;
+  created_at: string;
+}
 
-type PatientFormValues = z.infer<typeof patientSchema>;
+interface Consultorio {
+  id: string;
+  name: string;
+}
 
 export default function Patients() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
-  const [aiOpen, setAiOpen] = useState(false);
-  const [registrationMode, setRegistrationMode] = useState<'manual' | 'ai'>('manual');
-
-  const form = useForm<PatientFormValues>({
-    resolver: zodResolver(patientSchema),
-    defaultValues: {
-      full_name: '',
-      document_type: '',
-      document_number: '',
-      eps: '',
-      phone: '+57 ',
-      email: '',
-      consultorio_id: '',
-    },
+  const queryClient = useQueryClient();
+  
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAIMode, setIsAIMode] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    fullName: '',
+    documentType: '',
+    documentNumber: '',
+    eps: '',
+    phone: '+57',
+    email: '',
+    consultorioId: ''
   });
 
-  const { data: patients, isLoading, refetch } = useQuery({
+  // Fetch patients
+  const { data: patients, isLoading } = useQuery({
     queryKey: ['patients'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('patients')
-        .select('id, first_name, last_name, phone, email, document_number, document_type')
+        .select('*')
+        .eq('user_id', user?.id)
         .order('created_at', { ascending: false });
+      
       if (error) throw error;
-      return data ?? [];
+      return data as Patient[];
     },
+    enabled: !!user
   });
 
+  // Fetch consultorios
   const { data: consultorios } = useQuery({
     queryKey: ['consultorios'],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('consultorios')
-        .select('id, name, address')
+        .select('id, name')
         .eq('user_id', user?.id)
         .order('name');
+      
       if (error) throw error;
-      return data ?? [];
+      return data as Consultorio[];
     },
-    enabled: !!user,
+    enabled: !!user
   });
 
-  const addPatient = useMutation({
-    mutationFn: async (values: PatientFormValues) => {
-      if (!user) throw new Error('No autenticado');
-      
-      // Split full name into first_name and last_name
-      const nameParts = values.full_name.trim().split(' ');
-      const first_name = nameParts[0] || '';
-      const last_name = nameParts.slice(1).join(' ') || '';
-      
-      const payload = {
-        first_name,
-        last_name,
-        document_type: values.document_type,
-        document_number: values.document_number,
-        phone: values.phone,
-        email: values.email,
-        user_id: user.id,
-        consultorio_id: values.consultorio_id && values.consultorio_id !== '' ? values.consultorio_id : null,
-        // Store EPS in medical_history for now until we add it to schema
-        medical_history: `EPS: ${values.eps}`,
-      };
+  // Create patient mutation
+  const createPatientMutation = useMutation({
+    mutationFn: async (patientData: any) => {
+      const nameParts = patientData.fullName.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
       const { data, error } = await supabase
         .from('patients')
-        .insert(payload as any)
-        .select('id')
+        .insert([{
+          user_id: user?.id,
+          first_name: firstName,
+          last_name: lastName,
+          document_type: patientData.documentType,
+          document_number: patientData.documentNumber,
+          eps: patientData.eps,
+          phone: patientData.phone,
+          email: patientData.email,
+          consultorio_id: patientData.consultorioId || null
+        }])
+        .select()
         .single();
+      
       if (error) throw error;
       return data;
     },
-    onSuccess: async () => {
-      toast({ title: 'Paciente creado', description: 'El paciente se añadió correctamente.' });
-      form.reset();
-      form.setValue('phone', '+57 ');
-      setOpen(false);
-      setAiOpen(false);
-      await refetch();
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['patients'] });
+      resetForm();
+      setIsDialogOpen(false);
+      toast.success('Paciente creado exitosamente');
     },
-    onError: (err: any) => {
-      toast({ title: 'Error al crear paciente', description: err.message ?? 'Intenta nuevamente', variant: 'destructive' });
+    onError: (error) => {
+      toast.error('Error al crear paciente: ' + error.message);
     },
   });
 
-  const onSubmit = (values: PatientFormValues) => addPatient.mutate(values);
-
-  const handleModeChange = (mode: 'manual' | 'ai') => {
-    setRegistrationMode(mode);
-    if (mode === 'ai') {
-      setOpen(false);
-      setAiOpen(true);
-    } else {
-      setAiOpen(false);
-      setOpen(true);
-    }
+  const resetForm = () => {
+    setFormData({
+      fullName: '',
+      documentType: '',
+      documentNumber: '',
+      eps: '',
+      phone: '+57',
+      email: '',
+      consultorioId: ''
+    });
+    setIsAIMode(false);
+    setIsRecording(false);
   };
 
-  const emptyState = useMemo(() => (
-    <div className="text-sm text-muted-foreground">No hay pacientes aún. Agrega el primero con el botón "Nuevo Paciente".</div>
-  ), []);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.fullName.trim()) {
+      toast.error('El nombre completo es requerido');
+      return;
+    }
+    
+    if (!formData.documentType) {
+      toast.error('El tipo de documento es requerido');
+      return;
+    }
+    
+    if (!formData.documentNumber.trim()) {
+      toast.error('El número de documento es requerido');
+      return;
+    }
+
+    createPatientMutation.mutate(formData);
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const toggleRecording = () => {
+    setIsRecording(!isRecording);
+    // TODO: Implement voice recording logic
+    toast.info(isRecording ? 'Grabación detenida' : 'Iniciando grabación...');
+  };
+
+  const filteredPatients = patients?.filter(patient => 
+    patient.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    patient.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    patient.document_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    patient.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    patient.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || [];
 
   return (
     <AdminLayout>
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Pacientes</h1>
-
-          <div className="flex gap-2">
-            <Button onClick={() => handleModeChange('manual')}>
-              <Plus className="h-4 w-4 mr-2" />
-              Registrar Nuevo Paciente Manualmente
-            </Button>
-            <Button variant="outline" onClick={() => handleModeChange('ai')}>
-              <Mic className="h-4 w-4 mr-2" />
-              Registrar con IA
-            </Button>
-          </div>
-
-          <Dialog open={open} onOpenChange={setOpen}>
+          
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <div />
+              <Button onClick={resetForm}>
+                <Plus className="h-4 w-4 mr-2" />
+                Registrar Nuevo Paciente
+              </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Registrar Nuevo Paciente Manualmente</DialogTitle>
+                <DialogTitle>Registrar Nuevo Paciente</DialogTitle>
               </DialogHeader>
 
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="full_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nombre Completo</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Nombre completo del paciente" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              <div className="flex gap-2 mb-4">
+                <Button
+                  type="button"
+                  variant={!isAIMode ? "default" : "outline"}
+                  onClick={() => setIsAIMode(false)}
+                  className="flex-1"
+                >
+                  Manualmente
+                </Button>
+                <Button
+                  type="button"
+                  variant={isAIMode ? "default" : "outline"}
+                  onClick={() => setIsAIMode(true)}
+                  className="flex-1"
+                >
+                  Con IA
+                </Button>
+              </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="document_type"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tipo Documento</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecciona tipo" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {DOCUMENT_TYPES.map((type) => (
-                                <SelectItem key={type.value} value={type.value}>
-                                  {type.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="document_number"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Número Documento</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Número sin puntos ni comas" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+              <div className="flex gap-6">
+                <form onSubmit={handleSubmit} className="flex-1 space-y-4">
+                  <div>
+                    <Label htmlFor="fullName">Nombre Completo *</Label>
+                    <Input
+                      id="fullName"
+                      value={formData.fullName}
+                      onChange={(e) => handleInputChange('fullName', e.target.value)}
+                      placeholder="Nombre completo del paciente"
+                      required
                     />
                   </div>
 
-                  <FormField
-                    control={form.control}
-                    name="eps"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>EPS</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecciona EPS" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent className="max-h-[200px]">
-                            {COLOMBIAN_EPS.map((eps) => (
-                              <SelectItem key={eps} value={eps}>
-                                {eps}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div>
+                    <Label htmlFor="documentType">Tipo Documento *</Label>
+                    <Select value={formData.documentType} onValueChange={(value) => handleInputChange('documentType', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar tipo de documento" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DOCUMENT_TYPES.map((type) => (
+                          <SelectItem key={type.value} value={type.value}>
+                            {type.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Teléfono</FormLabel>
-                        <FormControl>
-                          <Input placeholder="+57 300 000 0000" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div>
+                    <Label htmlFor="documentNumber">Número Documento *</Label>
+                    <Input
+                      id="documentNumber"
+                      value={formData.documentNumber}
+                      onChange={(e) => handleInputChange('documentNumber', e.target.value)}
+                      placeholder="Número del documento sin puntos ni comas"
+                      required
+                    />
+                  </div>
 
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Correo Electrónico</FormLabel>
-                        <FormControl>
-                          <Input type="email" placeholder="correo@ejemplo.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div>
+                    <Label htmlFor="eps">EPS</Label>
+                    <Select value={formData.eps} onValueChange={(value) => handleInputChange('eps', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar EPS" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COLOMBIAN_EPS.map((eps) => (
+                          <SelectItem key={eps} value={eps}>
+                            {eps}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="phone">Teléfono</Label>
+                    <Input
+                      id="phone"
+                      value={formData.phone}
+                      onChange={(e) => handleInputChange('phone', e.target.value)}
+                      placeholder="Número de contacto del paciente"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="email">Correo Electrónico</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      placeholder="Correo electrónico del paciente"
+                    />
+                  </div>
 
                   {consultorios && consultorios.length > 0 && (
-                    <FormField
-                      control={form.control}
-                      name="consultorio_id"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Asignar a Consultorio</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecciona consultorio" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {consultorios.map((consultorio) => (
-                                <SelectItem key={consultorio.id} value={consultorio.id}>
-                                  {consultorio.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div>
+                      <Label htmlFor="consultorio">Asignar a Consultorio</Label>
+                      <Select value={formData.consultorioId} onValueChange={(value) => handleInputChange('consultorioId', value)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar consultorio" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {consultorios.map((consultorio) => (
+                            <SelectItem key={consultorio.id} value={consultorio.id}>
+                              {consultorio.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   )}
 
-                  <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                  <div className="flex gap-2 pt-4">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setIsDialogOpen(false)}
+                    >
                       Cancelar
                     </Button>
-                    <Button type="submit" disabled={addPatient.isPending}>
-                      {addPatient.isPending ? 'Guardando...' : 'Guardar Paciente'}
+                    <Button 
+                      type="submit" 
+                      disabled={createPatientMutation.isPending}
+                    >
+                      {createPatientMutation.isPending ? 'Guardando...' : 'Guardar Paciente'}
                     </Button>
-                  </DialogFooter>
+                  </div>
                 </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
 
-          {/* AI Registration Sheet */}
-          <Sheet open={aiOpen} onOpenChange={setAiOpen}>
-            <SheetContent side="right" className="w-[400px] sm:w-[540px]">
-              <SheetHeader>
-                <SheetTitle className="flex items-center gap-2">
-                  <Mic className="h-5 w-5" />
-                  Registrar Paciente con IA
-                </SheetTitle>
-              </SheetHeader>
-              
-              <div className="mt-6 space-y-4">
-                <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Habla claramente y menciona cada campo:
-                  </p>
-                  <ul className="text-sm space-y-1 text-muted-foreground">
-                    <li>• <strong>Nombre completo:</strong> "Juan Carlos Pérez López"</li>
-                    <li>• <strong>Tipo documento:</strong> "Cédula de ciudadanía"</li>
-                    <li>• <strong>Número documento:</strong> "12345678"</li>
-                    <li>• <strong>EPS:</strong> "EPS Sura"</li>
-                    <li>• <strong>Teléfono:</strong> "3001234567"</li>
-                    <li>• <strong>Correo:</strong> "juan@ejemplo.com"</li>
-                    <li>• <strong>Consultorio:</strong> "Centro Médico Principal"</li>
-                  </ul>
-                </div>
-
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="full_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nombre Completo</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Se llenará automáticamente..." {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="document_type"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Tipo Documento</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Auto..." />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {DOCUMENT_TYPES.map((type) => (
-                                  <SelectItem key={type.value} value={type.value}>
-                                    {type.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="document_number"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Número Documento</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Auto..." {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      control={form.control}
-                      name="eps"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>EPS</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Auto..." />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent className="max-h-[200px]">
-                              {COLOMBIAN_EPS.map((eps) => (
-                                <SelectItem key={eps} value={eps}>
-                                  {eps}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="phone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Teléfono</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Auto..." {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Correo Electrónico</FormLabel>
-                          <FormControl>
-                            <Input type="email" placeholder="Auto..." {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {consultorios && consultorios.length > 0 && (
-                      <FormField
-                        control={form.control}
-                        name="consultorio_id"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Asignar a Consultorio</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Auto..." />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {consultorios.map((consultorio) => (
-                                  <SelectItem key={consultorio.id} value={consultorio.id}>
-                                    {consultorio.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
-
-                    <div className="pt-4 space-y-2">
-                      <Button 
-                        type="button" 
-                        className="w-full" 
-                        variant="outline"
-                        size="lg"
-                      >
-                        <Mic className="h-4 w-4 mr-2" />
-                        Empezar Grabación
-                      </Button>
-                      
-                      <div className="flex gap-2">
-                        <Button type="button" variant="outline" onClick={() => setAiOpen(false)} className="flex-1">
-                          Cancelar
-                        </Button>
-                        <Button type="submit" disabled={addPatient.isPending} className="flex-1">
-                          {addPatient.isPending ? 'Guardando...' : 'Guardar Paciente'}
+                {isAIMode && (
+                  <div className="w-80 bg-muted/30 p-4 rounded-lg">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-medium">Registro con IA</h3>
+                        <Button
+                          type="button"
+                          variant={isRecording ? "destructive" : "default"}
+                          size="sm"
+                          onClick={toggleRecording}
+                        >
+                          {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                         </Button>
                       </div>
+                      
+                      <div className="text-sm text-muted-foreground space-y-2">
+                        <p>Diga en voz alta la información del paciente:</p>
+                        <ul className="list-disc list-inside space-y-1 text-xs">
+                          <li>"Tipo de documento: Cédula de ciudadanía"</li>
+                          <li>"Número de documento: 12345678"</li>
+                          <li>"Nombre completo: Juan Pérez García"</li>
+                          <li>"EPS: EPS SURA"</li>
+                          <li>"Teléfono: 3001234567"</li>
+                          <li>"Correo: juan@email.com"</li>
+                        </ul>
+                      </div>
+                      
+                      {isRecording && (
+                        <div className="text-center">
+                          <div className="animate-pulse text-red-500">
+                            🔴 Grabando...
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </form>
-                </Form>
+                  </div>
+                )}
               </div>
-            </SheetContent>
-          </Sheet>
+            </DialogContent>
+          </Dialog>
         </div>
 
+        {/* Search */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar pacientes por nombre, documento, teléfono o email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Patients List */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Lista de Pacientes
+              <User className="h-5 w-5" />
+              Lista de Pacientes ({filteredPatients.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="text-sm text-muted-foreground">Cargando pacientes...</div>
-            ) : !patients || patients.length === 0 ? (
-              emptyState
+              <p className="text-muted-foreground">Cargando pacientes...</p>
+            ) : filteredPatients.length === 0 ? (
+              <div className="text-center py-8">
+                <User className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground mb-4">
+                  {patients?.length === 0 ? "No tienes pacientes registrados" : "No se encontraron pacientes"}
+                </p>
+              </div>
             ) : (
-              <div className="w-full overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nombre</TableHead>
-                      <TableHead>Documento</TableHead>
-                      <TableHead>Teléfono</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {patients.map((p: any) => (
-                      <TableRow key={p.id}>
-                        <TableCell>{p.first_name} {p.last_name}</TableCell>
-                        <TableCell>{p.document_type} {p.document_number}</TableCell>
-                        <TableCell>{p.phone ?? '-'}</TableCell>
-                        <TableCell>{p.email ?? '-'}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => navigate(`/patients/${p.id}`)}
-                            >
-                              <Eye className="h-4 w-4 mr-1" />
-                              Ver Detalle
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => navigate(`/patients/${p.id}?tab=ai-assistant`)}
-                            >
-                              <Brain className="h-4 w-4 mr-1" />
-                              IA Asistente
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+              <div className="grid gap-4">
+                {filteredPatients.map((patient) => (
+                  <div 
+                    key={patient.id} 
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/patients/${patient.id}`)}
+                  >
+                    <div className="flex items-center gap-4">
+                      <User className="h-8 w-8 text-primary" />
+                      <div>
+                        <h3 className="font-semibold">
+                          {patient.first_name} {patient.last_name}
+                        </h3>
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          {patient.document_type && patient.document_number && (
+                            <p>{DOCUMENT_TYPES.find(t => t.value === patient.document_type)?.label}: {patient.document_number}</p>
+                          )}
+                          {patient.eps && <p>EPS: {patient.eps}</p>}
+                          {patient.phone && <p>Tel: {patient.phone}</p>}
+                          {patient.email && <p>Email: {patient.email}</p>}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {new Date(patient.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </CardContent>

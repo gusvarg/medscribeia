@@ -186,6 +186,7 @@ export type Database = {
           assessment: string | null
           chief_complaint: string | null
           consultation_date: string
+          consultorio_id: string | null
           created_at: string
           history_present_illness: string | null
           id: string
@@ -201,6 +202,7 @@ export type Database = {
           assessment?: string | null
           chief_complaint?: string | null
           consultation_date?: string
+          consultorio_id?: string | null
           created_at?: string
           history_present_illness?: string | null
           id?: string
@@ -216,6 +218,7 @@ export type Database = {
           assessment?: string | null
           chief_complaint?: string | null
           consultation_date?: string
+          consultorio_id?: string | null
           created_at?: string
           history_present_illness?: string | null
           id?: string
@@ -228,6 +231,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "consultations_consultorio_id_fkey"
+            columns: ["consultorio_id"]
+            isOneToOne: false
+            referencedRelation: "consultorios"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "consultations_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
@@ -236,17 +246,49 @@ export type Database = {
           },
         ]
       }
+      consultorios: {
+        Row: {
+          address: string | null
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       patients: {
         Row: {
           address: string | null
           allergies: string | null
+          consultorio_id: string | null
           created_at: string
           current_medications: string | null
           date_of_birth: string | null
           document_number: string | null
+          document_type:
+            | Database["public"]["Enums"]["patient_document_type"]
+            | null
           email: string | null
           emergency_contact: string | null
           emergency_phone: string | null
+          eps: string | null
           first_name: string
           gender: string | null
           id: string
@@ -259,13 +301,18 @@ export type Database = {
         Insert: {
           address?: string | null
           allergies?: string | null
+          consultorio_id?: string | null
           created_at?: string
           current_medications?: string | null
           date_of_birth?: string | null
           document_number?: string | null
+          document_type?:
+            | Database["public"]["Enums"]["patient_document_type"]
+            | null
           email?: string | null
           emergency_contact?: string | null
           emergency_phone?: string | null
+          eps?: string | null
           first_name: string
           gender?: string | null
           id?: string
@@ -278,13 +325,18 @@ export type Database = {
         Update: {
           address?: string | null
           allergies?: string | null
+          consultorio_id?: string | null
           created_at?: string
           current_medications?: string | null
           date_of_birth?: string | null
           document_number?: string | null
+          document_type?:
+            | Database["public"]["Enums"]["patient_document_type"]
+            | null
           email?: string | null
           emergency_contact?: string | null
           emergency_phone?: string | null
+          eps?: string | null
           first_name?: string
           gender?: string | null
           id?: string
@@ -294,7 +346,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "patients_consultorio_id_fkey"
+            columns: ["consultorio_id"]
+            isOneToOne: false
+            referencedRelation: "consultorios"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payments: {
         Row: {
@@ -458,6 +518,7 @@ export type Database = {
     }
     Enums: {
       app_role: "super_admin" | "admin" | "moderator" | "user"
+      patient_document_type: "CC" | "TI" | "DNI" | "PP" | "CE"
       payment_status: "pending" | "completed" | "failed" | "refunded"
       subscription_status:
         | "active"
@@ -593,6 +654,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["super_admin", "admin", "moderator", "user"],
+      patient_document_type: ["CC", "TI", "DNI", "PP", "CE"],
       payment_status: ["pending", "completed", "failed", "refunded"],
       subscription_status: [
         "active",
