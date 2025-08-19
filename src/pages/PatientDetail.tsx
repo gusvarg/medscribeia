@@ -8,8 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AIConsultationAssistant } from '@/components/AIConsultationAssistant';
-import { ArrowLeft, User, Calendar, Brain, MessageSquare, Send, Plus, Save } from 'lucide-react';
+import { ArrowLeft, User, Calendar, Brain, MessageSquare, Send, Plus, Save, Stethoscope, Mic } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -66,6 +67,7 @@ export default function PatientDetail() {
   
   // New consultation form
   const [showNewConsultation, setShowNewConsultation] = useState(false);
+  const [showMethodDialog, setShowMethodDialog] = useState(false);
   const [consultationForm, setConsultationForm] = useState<ConsultationFormData>({
     chief_complaint: '',
     history_present_illness: '',
@@ -168,6 +170,17 @@ export default function PatientDetail() {
     });
     setShowNewConsultation(true);
     setActiveTab('new-consultation');
+    setShowMethodDialog(false);
+  };
+
+  const handleManualConsultation = () => {
+    setActiveTab('new-consultation');
+    setShowMethodDialog(false);
+  };
+
+  const handleAIConsultation = () => {
+    setActiveTab('ai-assistant');
+    setShowMethodDialog(false);
   };
 
   const saveConsultation = async () => {
@@ -303,7 +316,10 @@ export default function PatientDetail() {
               <Brain className="h-4 w-4 mr-2" />
               Asistente IA
             </TabsTrigger>
-            <TabsTrigger value="new-consultation">
+            <TabsTrigger value="new-consultation" onClick={(e) => {
+              e.preventDefault();
+              setShowMethodDialog(true);
+            }}>
               <Plus className="h-4 w-4 mr-2" />
               Nueva Consulta
             </TabsTrigger>
@@ -359,16 +375,25 @@ export default function PatientDetail() {
               {consultations.length === 0 ? (
                 <Card>
                   <CardContent className="p-6 text-center">
-                    <p className="text-muted-foreground">
+                    <p className="text-muted-foreground mb-4">
                       No hay consultas registradas para este paciente.
                     </p>
-                    <Button 
-                      onClick={() => setActiveTab('ai-assistant')} 
-                      className="mt-4"
-                    >
-                      <Brain className="h-4 w-4 mr-2" />
-                      Crear Primera Consulta con IA
-                    </Button>
+                    <div className="flex gap-3 justify-center">
+                      <Button 
+                        onClick={() => setActiveTab('ai-assistant')} 
+                        variant="default"
+                      >
+                        <Mic className="h-4 w-4 mr-2" />
+                        Crear con IA
+                      </Button>
+                      <Button 
+                        onClick={() => setActiveTab('new-consultation')} 
+                        variant="outline"
+                      >
+                        <Stethoscope className="h-4 w-4 mr-2" />
+                        Crear Manual
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ) : (
@@ -576,6 +601,42 @@ export default function PatientDetail() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Method Selection Dialog */}
+        <Dialog open={showMethodDialog} onOpenChange={setShowMethodDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Seleccionar Método de Consulta</DialogTitle>
+              <DialogDescription>
+                Elige cómo quieres crear la nueva consulta médica
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-4 py-4">
+              <Button 
+                onClick={handleAIConsultation}
+                className="flex items-center justify-start gap-3 h-16"
+                variant="default"
+              >
+                <Mic className="h-6 w-6" />
+                <div className="text-left">
+                  <div className="font-medium">Con Asistente IA</div>
+                  <div className="text-sm opacity-90">Graba audio y estructura automáticamente</div>
+                </div>
+              </Button>
+              <Button 
+                onClick={handleManualConsultation}
+                className="flex items-center justify-start gap-3 h-16"
+                variant="outline"
+              >
+                <Stethoscope className="h-6 w-6" />
+                <div className="text-left">
+                  <div className="font-medium">Manual</div>
+                  <div className="text-sm text-muted-foreground">Completa los campos manualmente</div>
+                </div>
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );
