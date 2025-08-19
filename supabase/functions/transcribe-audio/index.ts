@@ -9,6 +9,7 @@ const corsHeaders = {
 interface TranscribeRequest {
   audio: string; // Base64 encoded audio
   provider?: 'gemini' | 'openai';
+  recordingId?: string; // Optional recording ID to update in database
 }
 
 serve(async (req) => {
@@ -17,10 +18,19 @@ serve(async (req) => {
   }
 
   try {
-    const { audio, provider = 'gemini' }: TranscribeRequest = await req.json();
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    const { audio, provider = 'gemini', recordingId }: TranscribeRequest = await req.json();
 
     if (!audio) {
       throw new Error('Audio data is required');
+    }
+
+    let supabase;
+    if (supabaseUrl && supabaseServiceKey && recordingId) {
+      const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.55.0');
+      supabase = createClient(supabaseUrl, supabaseServiceKey);
     }
 
     console.log(`Using ${provider} for transcription`);
@@ -63,6 +73,17 @@ serve(async (req) => {
 
       const result = await response.json();
       const transcription = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+      // Update database record if recordingId provided
+      if (supabase && recordingId) {
+        await supabase
+          .from('audio_recordings')
+          .update({ 
+            transcription,
+            transcription_status: 'completed'
+          })
+          .eq('id', recordingId);
+      }
 
       return new Response(
         JSON.stringify({ 
