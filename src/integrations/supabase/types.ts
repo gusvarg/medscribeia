@@ -243,6 +243,7 @@ export type Database = {
           created_at: string
           current_medications: string | null
           date_of_birth: string | null
+          document_number: string | null
           email: string | null
           emergency_contact: string | null
           emergency_phone: string | null
@@ -261,6 +262,7 @@ export type Database = {
           created_at?: string
           current_medications?: string | null
           date_of_birth?: string | null
+          document_number?: string | null
           email?: string | null
           emergency_contact?: string | null
           emergency_phone?: string | null
@@ -279,6 +281,7 @@ export type Database = {
           created_at?: string
           current_medications?: string | null
           date_of_birth?: string | null
+          document_number?: string | null
           email?: string | null
           emergency_contact?: string | null
           emergency_phone?: string | null

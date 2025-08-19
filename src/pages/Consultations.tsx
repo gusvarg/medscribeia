@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Search, User, Calendar, Brain, FileText, Filter, Sparkles } from 'lucide-react';
+import { Search, User, Calendar, Brain, FileText, Filter, CalendarIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,17 +19,32 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  Command,
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { format, addDays } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
+import type { DateRange } from 'react-day-picker';
 
 interface Patient {
   id: string;
   first_name: string;
   last_name: string;
+  document_number?: string;
+  phone?: string;
+  email?: string;
 }
 
 interface Consultation {
@@ -54,14 +69,11 @@ export default function Consultations() {
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [filteredConsultations, setFilteredConsultations] = useState<Consultation[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [dateFilter, setDateFilter] = useState('all');
-  const [selectedStartDate, setSelectedStartDate] = useState('');
-  const [selectedEndDate, setSelectedEndDate] = useState('');
-  const [showPatientDialog, setShowPatientDialog] = useState(false);
-  const [selectedPatientForSearch, setSelectedPatientForSearch] = useState<string>('');
-  const [showInsightsDialog, setShowInsightsDialog] = useState(false);
-  const [insights, setInsights] = useState('');
-  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [smartSearchOpen, setSmartSearchOpen] = useState(false);
+  const [smartSearchQuery, setSmartSearchQuery] = useState('');
+  const [smartSearchResults, setSmartSearchResults] = useState<Patient[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -72,13 +84,35 @@ export default function Consultations() {
 
   useEffect(() => {
     filterConsultations();
-  }, [consultations, searchTerm, dateFilter, selectedStartDate, selectedEndDate]);
+  }, [consultations, searchTerm, dateRange]);
+
+  // Smart search effect
+  useEffect(() => {
+    if (smartSearchQuery.length >= 2) {
+      searchPatients(smartSearchQuery);
+    } else {
+      setSmartSearchResults([]);
+    }
+  }, [smartSearchQuery]);
+
+  // Keyboard shortcut for smart search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setSmartSearchOpen(true);
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const fetchPatients = async () => {
     try {
       const { data, error } = await supabase
         .from('patients')
-        .select('id, first_name, last_name')
+        .select('id, first_name, last_name, document_number, phone, email')
         .eq('user_id', user?.id)
         .order('first_name');
 
@@ -86,6 +120,24 @@ export default function Consultations() {
       setPatients(data || []);
     } catch (error) {
       console.error('Error fetching patients:', error);
+    }
+  };
+
+  const searchPatients = async (query: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('patients')
+        .select('id, first_name, last_name, document_number, phone, email')
+        .eq('user_id', user?.id)
+        .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,document_number.ilike.%${query}%,phone.ilike.%${query}%,email.ilike.%${query}%`)
+        .order('first_name')
+        .limit(10);
+
+      if (error) throw error;
+      setSmartSearchResults(data || []);
+    } catch (error) {
+      console.error('Error searching patients:', error);
+      setSmartSearchResults([]);
     }
   };
 
@@ -126,97 +178,44 @@ export default function Consultations() {
         consultation.patients.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         consultation.patients.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         consultation.chief_complaint?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        consultation.assessment?.toLowerCase().includes(searchTerm.toLowerCase())
+        consultation.assessment?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        consultation.history_present_illness?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        consultation.notes?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    // Date filter
-    if (dateFilter !== 'all') {
-      const today = new Date();
-      const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      
-      switch (dateFilter) {
-        case 'today':
-          filtered = filtered.filter(consultation => 
-            new Date(consultation.consultation_date) >= startOfToday
-          );
-          break;
-        case 'week':
-          const weekAgo = new Date(startOfToday);
-          weekAgo.setDate(weekAgo.getDate() - 7);
-          filtered = filtered.filter(consultation => 
-            new Date(consultation.consultation_date) >= weekAgo
-          );
-          break;
-        case 'month':
-          const monthAgo = new Date(startOfToday);
-          monthAgo.setMonth(monthAgo.getMonth() - 1);
-          filtered = filtered.filter(consultation => 
-            new Date(consultation.consultation_date) >= monthAgo
-          );
-          break;
-        case 'custom':
-          if (selectedStartDate && selectedEndDate) {
-            filtered = filtered.filter(consultation => {
-              const consultationDate = new Date(consultation.consultation_date);
-              return consultationDate >= new Date(selectedStartDate) && 
-                     consultationDate <= new Date(selectedEndDate + 'T23:59:59');
-            });
-          }
-          break;
-      }
+    // Date range filter
+    if (dateRange?.from) {
+      filtered = filtered.filter(consultation => {
+        const consultationDate = new Date(consultation.consultation_date);
+        const startOfDay = new Date(dateRange.from!);
+        startOfDay.setHours(0, 0, 0, 0);
+        
+        if (dateRange.to) {
+          const endOfDay = new Date(dateRange.to);
+          endOfDay.setHours(23, 59, 59, 999);
+          return consultationDate >= startOfDay && consultationDate <= endOfDay;
+        } else {
+          return consultationDate >= startOfDay;
+        }
+      });
     }
 
     setFilteredConsultations(filtered);
   };
 
-  const handlePatientSelect = () => {
-    if (!selectedPatientForSearch) {
-      toast({
-        title: "Error",
-        description: "Selecciona un paciente",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setShowPatientDialog(false);
-    navigate(`/patients/${selectedPatientForSearch}?tab=ai-assistant`);
+  const handleSmartSearch = () => {
+    setSmartSearchOpen(true);
   };
 
-  const generateInsights = async () => {
-    if (!selectedStartDate || !selectedEndDate) {
-      toast({
-        title: "Error",
-        description: "Selecciona un rango de fechas para generar insights",
-        variant: "destructive"
-      });
-      return;
-    }
+  const handlePatientSelect = (patientId: string) => {
+    setSmartSearchOpen(false);
+    setSmartSearchQuery('');
+    navigate(`/patients/${patientId}?tab=ai-assistant`);
+  };
 
-    setInsightsLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('consultations-insights', {
-        body: { 
-          startDate: selectedStartDate,
-          endDate: selectedEndDate
-        }
-      });
-
-      if (error) throw error;
-
-      setInsights(data.insights || 'No se pudo generar el análisis.');
-      setShowInsightsDialog(true);
-    } catch (error: any) {
-      console.error('Error generating insights:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo generar el análisis: " + error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setInsightsLoading(false);
-    }
+  const clearDateRange = () => {
+    setDateRange(undefined);
   };
 
   return (
@@ -225,49 +224,53 @@ export default function Consultations() {
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Panel de Consultas</h1>
           
-          <Dialog open={showPatientDialog} onOpenChange={setShowPatientDialog}>
-            <DialogTrigger asChild>
-              <Button variant="outline">
-                <Search className="h-4 w-4 mr-2" />
-                Buscar Paciente
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Seleccionar Paciente</DialogTitle>
-                <DialogDescription>
-                  Selecciona un paciente para acceder a su asistente IA
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Paciente</Label>
-                  <Select value={selectedPatientForSearch} onValueChange={setSelectedPatientForSearch}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona un paciente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {patients.map((patient) => (
-                        <SelectItem key={patient.id} value={patient.id}>
-                          {patient.first_name} {patient.last_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex gap-2 pt-4">
-                  <Button onClick={handlePatientSelect}>
-                    <Brain className="h-4 w-4 mr-2" />
-                    Ir al Asistente IA
-                  </Button>
-                  <Button variant="outline" onClick={() => setShowPatientDialog(false)}>
-                    Cancelar
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Button variant="outline" onClick={handleSmartSearch}>
+            <Search className="h-4 w-4 mr-2" />
+            Buscar Paciente
+            <span className="ml-2 text-xs opacity-60">⌘K</span>
+          </Button>
         </div>
+
+        {/* Smart Search Command Dialog */}
+        <CommandDialog open={smartSearchOpen} onOpenChange={setSmartSearchOpen}>
+          <CommandInput 
+            placeholder="Buscar por nombre, documento, teléfono o email..."
+            value={smartSearchQuery}
+            onValueChange={setSmartSearchQuery}
+          />
+          <CommandList>
+            <CommandEmpty>
+              {smartSearchQuery.length < 2 ? 'Escribe al menos 2 caracteres para buscar...' : 'No se encontraron pacientes.'}
+            </CommandEmpty>
+            <CommandGroup heading="Pacientes">
+              {smartSearchResults.map((patient) => (
+                <CommandItem
+                  key={patient.id}
+                  onSelect={() => handlePatientSelect(patient.id)}
+                  className="flex items-center gap-3 p-3"
+                >
+                  <User className="h-4 w-4" />
+                  <div className="flex flex-col">
+                    <span className="font-medium">
+                      {patient.first_name} {patient.last_name}
+                    </span>
+                    <div className="flex gap-4 text-xs text-muted-foreground">
+                      {patient.document_number && (
+                        <span>Doc: {patient.document_number}</span>
+                      )}
+                      {patient.phone && (
+                        <span>Tel: {patient.phone}</span>
+                      )}
+                      {patient.email && (
+                        <span>{patient.email}</span>
+                      )}
+                    </div>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </CommandDialog>
 
         {/* Search and Filters */}
         <Card>
@@ -278,11 +281,11 @@ export default function Consultations() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Buscar</Label>
+                <Label>Buscar en consultas</Label>
                 <Input
-                  placeholder="Buscar por paciente, motivo o diagnóstico..."
+                  placeholder="Buscar por paciente, motivo, diagnóstico..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -290,75 +293,84 @@ export default function Consultations() {
               
               <div className="space-y-2">
                 <Label>Filtrar por fecha</Label>
-                <Select value={dateFilter} onValueChange={setDateFilter}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas las fechas</SelectItem>
-                    <SelectItem value="today">Hoy</SelectItem>
-                    <SelectItem value="week">Última semana</SelectItem>
-                    <SelectItem value="month">Último mes</SelectItem>
-                    <SelectItem value="custom">Rango personalizado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Insights IA</Label>
-                <Button 
-                  onClick={generateInsights}
-                  disabled={insightsLoading}
-                  className="w-full"
-                >
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  {insightsLoading ? 'Analizando...' : 'Generar Análisis'}
-                </Button>
+                <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !dateRange?.from && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange?.from ? (
+                        dateRange.to ? (
+                          <>
+                            {format(dateRange.from, "dd MMM yyyy", { locale: es })} -{" "}
+                            {format(dateRange.to, "dd MMM yyyy", { locale: es })}
+                          </>
+                        ) : (
+                          format(dateRange.from, "dd MMM yyyy", { locale: es })
+                        )
+                      ) : (
+                        "Seleccionar fechas"
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <div className="p-3 border-b">
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setDateRange({ from: new Date(), to: new Date() })}
+                        >
+                          Hoy
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setDateRange({ 
+                            from: addDays(new Date(), -7), 
+                            to: new Date() 
+                          })}
+                        >
+                          Última semana
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setDateRange({ 
+                            from: addDays(new Date(), -30), 
+                            to: new Date() 
+                          })}
+                        >
+                          Último mes
+                        </Button>
+                      </div>
+                    </div>
+                    <CalendarComponent
+                      initialFocus
+                      mode="range"
+                      defaultMonth={dateRange?.from}
+                      selected={dateRange}
+                      onSelect={setDateRange}
+                      numberOfMonths={2}
+                      locale={es}
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                    <div className="p-3 border-t flex justify-end">
+                      <Button variant="outline" size="sm" onClick={clearDateRange}>
+                        Limpiar
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
-
-            {dateFilter === 'custom' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Fecha inicio</Label>
-                  <Input
-                    type="date"
-                    value={selectedStartDate}
-                    onChange={(e) => setSelectedStartDate(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Fecha fin</Label>
-                  <Input
-                    type="date"
-                    value={selectedEndDate}
-                    onChange={(e) => setSelectedEndDate(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
 
-        {/* Insights Dialog */}
-        <Dialog open={showInsightsDialog} onOpenChange={setShowInsightsDialog}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5" />
-                Análisis IA de Consultas
-              </DialogTitle>
-              <DialogDescription>
-                Insights generados por IA para el período seleccionado
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="prose prose-sm max-w-none">
-                <div className="whitespace-pre-wrap text-sm">{insights}</div>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
         
         {/* Consultations List */}
         <Card>
