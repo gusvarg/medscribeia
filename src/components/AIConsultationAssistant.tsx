@@ -22,6 +22,7 @@ interface ConsultationData {
 
 interface AIConsultationAssistantProps {
   patientId: string;
+  consultationId?: string;
   patientAge?: number;
   patientGender?: string;
   medicalHistory?: string;
@@ -32,6 +33,7 @@ interface AIConsultationAssistantProps {
 
 export const AIConsultationAssistant = ({ 
   patientId, 
+  consultationId,
   patientAge,
   patientGender, 
   medicalHistory, 
@@ -75,7 +77,8 @@ export const AIConsultationAssistant = ({
       const base64Audio = await blobToBase64(blob);
       const uploadResult = await uploadAudio({
         audioBlob: base64Audio,
-        fileName: `consultation-${Date.now()}.webm`
+        fileName: `consultation-${Date.now()}.webm`,
+        consultationId
       });
       if (uploadResult) {
         uploadedRecordingId = uploadResult.recordingId;

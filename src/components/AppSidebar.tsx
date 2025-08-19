@@ -67,11 +67,6 @@ const items = [
     icon: Calendar,
   },
   {
-    title: "IA Médica",
-    url: "/ai-tools",
-    icon: Brain,
-  },
-  {
     title: "Consultorios",
     url: "/consultorios",
     icon: Building2,

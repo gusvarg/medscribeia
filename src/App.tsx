@@ -14,7 +14,6 @@ import PatientDetail from "./pages/PatientDetail";
 import Consultations from "./pages/Consultations";
 import Transcriptions from "./pages/Transcriptions";
 import Calendar from "./pages/Calendar";
-import AITools from "./pages/AITools";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import Consultorios from "./pages/Consultorios";
@@ -44,7 +43,6 @@ const App = () => (
               <Route path="/consultations" element={<Consultations />} />
               <Route path="/transcriptions" element={<Transcriptions />} />
               <Route path="/calendar" element={<Calendar />} />
-              <Route path="/ai-tools" element={<AITools />} />
               <Route path="/consultorios" element={<Consultorios />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/profile" element={<Profile />} />
