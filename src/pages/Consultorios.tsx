@@ -63,9 +63,9 @@ export default function Consultorios() {
       const { error } = await supabase
         .from('consultorios')
         .insert({
-          ...values,
-          user_id: user.id,
+          name: values.name,
           address: values.address || null,
+          user_id: user.id,
         });
       if (error) throw error;
     },
@@ -91,7 +91,7 @@ export default function Consultorios() {
       const { error } = await supabase
         .from('consultorios')
         .update({
-          ...values,
+          name: values.name,
           address: values.address || null,
         })
         .eq('id', id);
