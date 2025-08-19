@@ -17,6 +17,7 @@ import Calendar from "./pages/Calendar";
 import AITools from "./pages/AITools";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
+import Consultorios from "./pages/Consultorios";
 import Analytics from "./pages/admin/Analytics";
 import Users from "./pages/admin/Users";
 import Payments from "./pages/admin/Payments";
@@ -44,6 +45,7 @@ const App = () => (
               <Route path="/transcriptions" element={<Transcriptions />} />
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/ai-tools" element={<AITools />} />
+              <Route path="/consultorios" element={<Consultorios />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/admin/analytics" element={<Analytics />} />

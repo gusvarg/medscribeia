@@ -36,6 +36,7 @@ import {
   Stethoscope,
   Package,
   DollarSign,
+  Building2,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
@@ -69,6 +70,11 @@ const items = [
     title: "IA Médica",
     url: "/ai-tools",
     icon: Brain,
+  },
+  {
+    title: "Consultorios",
+    url: "/consultorios",
+    icon: Building2,
   },
 ];
 
