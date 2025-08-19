@@ -40,7 +40,7 @@ interface Appointment {
   status: string;
   start_time: string;
   end_time: string;
-  patients: {
+  patient: {
     first_name: string;
     last_name: string;
   };
@@ -96,7 +96,7 @@ export default function Calendar() {
           status,
           start_time,
           end_time,
-          patients (
+          patients!inner (
             first_name,
             last_name
           )
@@ -106,7 +106,23 @@ export default function Calendar() {
         .order('start_time');
 
       if (error) throw error;
-      setAppointments(data || []);
+      
+      // Transform the data to match our interface
+      const transformedAppointments = (data || []).map(appointment => ({
+        id: appointment.id,
+        title: appointment.title,
+        description: appointment.description,
+        location: appointment.location,
+        status: appointment.status,
+        start_time: appointment.start_time,
+        end_time: appointment.end_time,
+        patient: {
+          first_name: appointment.patients.first_name,
+          last_name: appointment.patients.last_name
+        }
+      }));
+
+      setAppointments(transformedAppointments);
     } catch (error) {
       console.error('Error fetching appointments:', error);
     }
@@ -320,7 +336,7 @@ export default function Calendar() {
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4" />
                         <span className="font-medium">
-                          {appointment.patients.first_name} {appointment.patients.last_name}
+                          {appointment.patient.first_name} {appointment.patient.last_name}
                         </span>
                       </div>
                       <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(appointment.status)}`}>
