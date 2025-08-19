@@ -1,1 +1,10 @@
 project_id = "pkmmqwcjwebszfugkmlr"
+
+[functions.transcribe-audio]
+verify_jwt = true
+
+[functions.structure-consultation]  
+verify_jwt = true
+
+[functions.patient-chat]
+verify_jwt = true

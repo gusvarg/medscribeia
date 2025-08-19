@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, Plus, Calendar, User } from 'lucide-react';
+import { Stethoscope, Plus, User, Calendar, Brain, FileText } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -49,6 +50,7 @@ interface Consultation {
 
 export default function Consultations() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -169,7 +171,16 @@ export default function Consultations() {
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Consultas</h1>
-          <Dialog open={isOpen} onOpenChange={setIsOpen}>
+
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => navigate('/patients')}
+            >
+              <Brain className="h-4 w-4 mr-2" />
+              Usar Asistente IA
+            </Button>
+            <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
@@ -270,7 +281,8 @@ export default function Consultations() {
                 </div>
               </form>
             </DialogContent>
-          </Dialog>
+            </Dialog>
+          </div>
         </div>
         
         <Card>

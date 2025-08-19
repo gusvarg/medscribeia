@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Mic, Plus, FileText, User } from 'lucide-react';
+import { Mic, Plus, FileText, User, Copy, Share, Download, Mail } from 'lucide-react';
+import { formatTranscriptionForExport, copyToClipboard, shareViaWhatsApp, shareViaEmail, exportToNotepad } from '@/utils/exportUtils';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -164,6 +165,35 @@ export default function Transcriptions() {
     }
   };
 
+  const exportTranscription = (transcription: any, format: 'copy' | 'notepad' | 'whatsapp' | 'email') => {
+    const formattedTranscription = formatTranscriptionForExport(transcription);
+    const patientName = `${transcription.consultations?.patients?.first_name || 'Paciente'}_${transcription.consultations?.patients?.last_name || ''}`.replace(/\s+/g, '_');
+    const date = new Date(transcription.created_at).toISOString().split('T')[0];
+    const filename = `transcripcion_${patientName}_${date}`;
+
+    switch (format) {
+      case 'copy':
+        copyToClipboard(formattedTranscription).then(success => {
+          toast({
+            title: success ? "Copiado" : "Error",
+            description: success ? "Transcripción copiada al portapapeles" : "No se pudo copiar",
+            variant: success ? "default" : "destructive"
+          });
+        });
+        break;
+      case 'notepad':
+        exportToNotepad(formattedTranscription, filename);
+        break;
+      case 'whatsapp':
+        shareViaWhatsApp(formattedTranscription);
+        break;
+      case 'email':
+        const subject = `Transcripción Médica - ${transcription.consultations?.patients?.first_name || 'Paciente'} ${transcription.consultations?.patients?.last_name || ''}`;
+        shareViaEmail(subject, formattedTranscription);
+        break;
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="p-6 space-y-6">
@@ -250,8 +280,45 @@ export default function Transcriptions() {
                           {transcription.consultations.patients.first_name} {transcription.consultations.patients.last_name}
                         </span>
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        {new Date(transcription.created_at).toLocaleDateString()}
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm text-muted-foreground">
+                          {new Date(transcription.created_at).toLocaleDateString()}
+                        </div>
+                        {/* Export buttons */}
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => exportTranscription(transcription, 'copy')}
+                            title="Copiar al portapapeles"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => exportTranscription(transcription, 'notepad')}
+                            title="Descargar como .txt"
+                          >
+                            <Download className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => exportTranscription(transcription, 'whatsapp')}
+                            title="Compartir por WhatsApp"
+                          >
+                            <Share className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => exportTranscription(transcription, 'email')}
+                            title="Enviar por email"
+                          >
+                            <Mail className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                     {transcription.consultations.chief_complaint && (

@@ -2,7 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { AdminLayout } from '@/components/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, Plus } from 'lucide-react';
+import { Users, Plus, Eye, Brain } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -36,6 +37,7 @@ type PatientFormValues = z.infer<typeof patientSchema>;
 export default function Patients() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
   const form = useForm<PatientFormValues>({
@@ -336,6 +338,7 @@ export default function Patients() {
                       <TableHead>Email</TableHead>
                       <TableHead>Género</TableHead>
                       <TableHead>F. Nacimiento</TableHead>
+                      <TableHead>Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -346,6 +349,26 @@ export default function Patients() {
                         <TableCell>{p.email ?? '-'}</TableCell>
                         <TableCell>{p.gender ?? '-'}</TableCell>
                         <TableCell>{p.date_of_birth ?? '-'}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => navigate(`/patients/${p.id}`)}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              Ver Detalle
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => navigate(`/patients/${p.id}?tab=ai-assistant`)}
+                            >
+                              <Brain className="h-4 w-4 mr-1" />
+                              IA Asistente
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
