@@ -28,16 +28,7 @@ export function AdminLayout({ children, requireAdmin = false }: AdminLayoutProps
     return <Navigate to="/auth" replace />;
   }
 
-  if (requireAdmin && userRole !== 'admin' && userRole !== 'super_admin') {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Acceso Denegado</h1>
-          <p className="text-muted-foreground">No tienes permisos para acceder a esta página.</p>
-        </div>
-      </div>
-    );
-  }
+  const isDenied = requireAdmin && userRole !== 'admin' && userRole !== 'super_admin';
 
   return (
     <SidebarProvider>
@@ -46,7 +37,16 @@ export function AdminLayout({ children, requireAdmin = false }: AdminLayoutProps
         <div className="flex-1 flex flex-col">
           <DashboardHeader />
           <main className="flex-1">
-            {children}
+            {isDenied ? (
+              <div className="min-h-[60vh] bg-background flex items-center justify-center">
+                <div className="text-center">
+                  <h1 className="text-2xl font-bold mb-4">Acceso Denegado</h1>
+                  <p className="text-muted-foreground">No tienes permisos para acceder a esta página.</p>
+                </div>
+              </div>
+            ) : (
+              children
+            )}
           </main>
         </div>
       </div>
