@@ -3,14 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { User, Calendar, FileText, Filter, CalendarIcon, Eye, UserCheck, Building2 } from 'lucide-react';
+import { User, Calendar, FileText, Filter, CalendarIcon, Eye, UserCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Popover,
   PopoverContent,
@@ -21,7 +20,6 @@ import { format, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import type { DateRange } from 'react-day-picker';
-import { Badge } from '@/components/ui/badge';
 
 interface Consultation {
   id: string;
@@ -40,10 +38,6 @@ interface Consultation {
     phone?: string;
     email?: string;
   };
-  consultorios: {
-    id: string;
-    name: string;
-  } | null;
 }
 
 export default function Consultations() {
@@ -52,35 +46,19 @@ export default function Consultations() {
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [filteredConsultations, setFilteredConsultations] = useState<Consultation[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedConsultorio, setSelectedConsultorio] = useState<string>('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const [consultorios, setConsultorios] = useState<Array<{ id: string; name: string }>>([]);
 
   useEffect(() => {
     if (user) {
       fetchConsultations();
-      fetchConsultorios();
     }
   }, [user]);
 
   useEffect(() => {
     filterConsultations();
-  }, [consultations, searchTerm, selectedConsultorio, dateRange]);
+  }, [consultations, searchTerm, dateRange]);
 
-  const fetchConsultorios = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('consultorios')
-        .select('id, name')
-        .order('name');
-      
-      if (error) throw error;
-      setConsultorios(data || []);
-    } catch (error) {
-      console.error('Error fetching consultorios:', error);
-    }
-  };
 
   const fetchConsultations = async () => {
     try {
@@ -102,10 +80,6 @@ export default function Consultations() {
             document_number,
             phone,
             email
-          ),
-          consultorios (
-            id,
-            name
           )
         `)
         .eq('user_id', user?.id)
@@ -132,15 +106,7 @@ export default function Consultations() {
         consultation.chief_complaint?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         consultation.assessment?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         consultation.history_present_illness?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        consultation.notes?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        consultation.consultorios?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Consultorio filter
-    if (selectedConsultorio) {
-      filtered = filtered.filter(consultation => 
-        consultation.consultorios?.id === selectedConsultorio
+        consultation.notes?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -192,31 +158,14 @@ export default function Consultations() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Buscar en consultas</Label>
                 <Input
-                  placeholder="Buscar por paciente, documento, teléfono, motivo, diagnóstico, consultorio..."
+                  placeholder="Buscar por paciente, documento, teléfono, motivo, diagnóstico..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Filtrar por consultorio</Label>
-                <Select value={selectedConsultorio} onValueChange={setSelectedConsultorio}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos los consultorios" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Todos los consultorios</SelectItem>
-                    {consultorios.map((consultorio) => (
-                      <SelectItem key={consultorio.id} value={consultorio.id}>
-                        {consultorio.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
               
               <div className="space-y-2">
@@ -326,12 +275,6 @@ export default function Consultations() {
                         <span className="font-medium">
                           {consultation.patients.first_name} {consultation.patients.last_name}
                         </span>
-                        {consultation.consultorios && (
-                          <Badge variant="secondary" className="flex items-center gap-1">
-                            <Building2 className="h-3 w-3" />
-                            {consultation.consultorios.name}
-                          </Badge>
-                        )}
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="h-4 w-4" />

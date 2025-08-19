@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import { AdminLayout } from '@/components/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,7 +30,6 @@ const patientSchema = z.object({
   medical_history: z.string().optional(),
   allergies: z.string().optional(),
   current_medications: z.string().optional(),
-  consultorio_id: z.string().optional(),
 });
 
 type PatientFormValues = z.infer<typeof patientSchema>;
@@ -57,19 +55,6 @@ export default function Patients() {
       medical_history: '',
       allergies: '',
       current_medications: '',
-      consultorio_id: undefined,
-    },
-  });
-
-  const { data: consultorios = [] } = useQuery({
-    queryKey: ['consultorios'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('consultorios')
-        .select('id, name')
-        .order('name');
-      if (error) throw error;
-      return data;
     },
   });
 
@@ -78,10 +63,7 @@ export default function Patients() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('patients')
-        .select(`
-          id, first_name, last_name, phone, email, gender, date_of_birth,
-          consultorios (id, name)
-        `)
+        .select('id, first_name, last_name, phone, email, gender, date_of_birth')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -95,7 +77,6 @@ export default function Patients() {
         ...values,
         user_id: user.id,
         date_of_birth: values.date_of_birth && values.date_of_birth !== '' ? values.date_of_birth : null,
-        consultorio_id: values.consultorio_id || null,
       };
       const { data, error } = await supabase
         .from('patients')
@@ -166,31 +147,6 @@ export default function Patients() {
                           <FormControl>
                             <Input placeholder="Ej. Pérez" {...field} />
                           </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="consultorio_id"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Consultorio (opcional)</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecciona consultorio" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {consultorios.map((consultorio) => (
-                                <SelectItem key={consultorio.id} value={consultorio.id}>
-                                  {consultorio.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -378,7 +334,6 @@ export default function Patients() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nombre</TableHead>
-                      <TableHead>Consultorio</TableHead>
                       <TableHead>Teléfono</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Género</TableHead>
@@ -390,7 +345,6 @@ export default function Patients() {
                     {patients.map((p: any) => (
                       <TableRow key={p.id}>
                         <TableCell>{p.first_name} {p.last_name}</TableCell>
-                        <TableCell>{p.consultorios?.name || '-'}</TableCell>
                         <TableCell>{p.phone ?? '-'}</TableCell>
                         <TableCell>{p.email ?? '-'}</TableCell>
                         <TableCell>{p.gender ?? '-'}</TableCell>
