@@ -85,6 +85,15 @@ export default function PatientDetail() {
     }
   }, [id, user]);
 
+  // Handle URL tab parameter
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam === 'ai-assistant') {
+      setActiveTab('ai-assistant');
+    }
+  }, []);
+
   const fetchPatientData = async () => {
     try {
       const { data, error } = await supabase
