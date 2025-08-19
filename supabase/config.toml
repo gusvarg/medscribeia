@@ -8,3 +8,6 @@ verify_jwt = true
 
 [functions.patient-chat]
 verify_jwt = true
+
+[functions.consultations-insights]
+verify_jwt = true

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Stethoscope, Plus, User, Calendar, Brain, FileText } from 'lucide-react';
+import { Search, User, Calendar, Brain, FileText, Filter, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,7 +18,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -51,19 +50,18 @@ interface Consultation {
 export default function Consultations() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
-  const [selectedPatientId, setSelectedPatientId] = useState<string>('');
-  const [formData, setFormData] = useState({
-    chief_complaint: '',
-    history_present_illness: '',
-    physical_examination: '',
-    assessment: '',
-    plan: '',
-    notes: ''
-  });
+  const [filteredConsultations, setFilteredConsultations] = useState<Consultation[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [dateFilter, setDateFilter] = useState('all');
+  const [selectedStartDate, setSelectedStartDate] = useState('');
+  const [selectedEndDate, setSelectedEndDate] = useState('');
+  const [showPatientDialog, setShowPatientDialog] = useState(false);
+  const [selectedPatientForSearch, setSelectedPatientForSearch] = useState<string>('');
+  const [showInsightsDialog, setShowInsightsDialog] = useState(false);
+  const [insights, setInsights] = useState('');
+  const [insightsLoading, setInsightsLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -71,6 +69,10 @@ export default function Consultations() {
       fetchConsultations();
     }
   }, [user]);
+
+  useEffect(() => {
+    filterConsultations();
+  }, [consultations, searchTerm, dateFilter, selectedStartDate, selectedEndDate]);
 
   const fetchPatients = async () => {
     try {
@@ -115,9 +117,61 @@ export default function Consultations() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedPatientId) {
+  const filterConsultations = () => {
+    let filtered = [...consultations];
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(consultation => 
+        consultation.patients.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        consultation.patients.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        consultation.chief_complaint?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        consultation.assessment?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Date filter
+    if (dateFilter !== 'all') {
+      const today = new Date();
+      const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      
+      switch (dateFilter) {
+        case 'today':
+          filtered = filtered.filter(consultation => 
+            new Date(consultation.consultation_date) >= startOfToday
+          );
+          break;
+        case 'week':
+          const weekAgo = new Date(startOfToday);
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          filtered = filtered.filter(consultation => 
+            new Date(consultation.consultation_date) >= weekAgo
+          );
+          break;
+        case 'month':
+          const monthAgo = new Date(startOfToday);
+          monthAgo.setMonth(monthAgo.getMonth() - 1);
+          filtered = filtered.filter(consultation => 
+            new Date(consultation.consultation_date) >= monthAgo
+          );
+          break;
+        case 'custom':
+          if (selectedStartDate && selectedEndDate) {
+            filtered = filtered.filter(consultation => {
+              const consultationDate = new Date(consultation.consultation_date);
+              return consultationDate >= new Date(selectedStartDate) && 
+                     consultationDate <= new Date(selectedEndDate + 'T23:59:59');
+            });
+          }
+          break;
+      }
+    }
+
+    setFilteredConsultations(filtered);
+  };
+
+  const handlePatientSelect = () => {
+    if (!selectedPatientForSearch) {
       toast({
         title: "Error",
         description: "Selecciona un paciente",
@@ -125,44 +179,43 @@ export default function Consultations() {
       });
       return;
     }
+    
+    setShowPatientDialog(false);
+    navigate(`/patients/${selectedPatientForSearch}?tab=ai-assistant`);
+  };
 
-    setLoading(true);
+  const generateInsights = async () => {
+    if (!selectedStartDate || !selectedEndDate) {
+      toast({
+        title: "Error",
+        description: "Selecciona un rango de fechas para generar insights",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setInsightsLoading(true);
     try {
-      const { error } = await supabase
-        .from('consultations')
-        .insert({
-          user_id: user?.id,
-          patient_id: selectedPatientId,
-          ...formData
-        });
+      const { data, error } = await supabase.functions.invoke('consultations-insights', {
+        body: { 
+          startDate: selectedStartDate,
+          endDate: selectedEndDate
+        }
+      });
 
       if (error) throw error;
 
-      toast({
-        title: "Consulta creada",
-        description: "La consulta médica se ha registrado correctamente.",
-      });
-
-      setIsOpen(false);
-      setSelectedPatientId('');
-      setFormData({
-        chief_complaint: '',
-        history_present_illness: '',
-        physical_examination: '',
-        assessment: '',
-        plan: '',
-        notes: ''
-      });
-      fetchConsultations();
+      setInsights(data.insights || 'No se pudo generar el análisis.');
+      setShowInsightsDialog(true);
     } catch (error: any) {
-      console.error('Error creating consultation:', error);
+      console.error('Error generating insights:', error);
       toast({
         title: "Error",
-        description: "No se pudo crear la consulta: " + error.message,
+        description: "No se pudo generar el análisis: " + error.message,
         variant: "destructive"
       });
     } finally {
-      setLoading(false);
+      setInsightsLoading(false);
     }
   };
 
@@ -170,34 +223,26 @@ export default function Consultations() {
     <AdminLayout>
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Consultas</h1>
-
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => navigate('/patients')}
-            >
-              <Brain className="h-4 w-4 mr-2" />
-              Usar Asistente IA
-            </Button>
-            <Dialog open={isOpen} onOpenChange={setIsOpen}>
+          <h1 className="text-3xl font-bold">Panel de Consultas</h1>
+          
+          <Dialog open={showPatientDialog} onOpenChange={setShowPatientDialog}>
             <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Nueva Consulta
+              <Button variant="outline">
+                <Search className="h-4 w-4 mr-2" />
+                Buscar Paciente
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent>
               <DialogHeader>
-                <DialogTitle>Nueva Consulta Médica</DialogTitle>
+                <DialogTitle>Seleccionar Paciente</DialogTitle>
                 <DialogDescription>
-                  Registra una nueva consulta médica con el historial del paciente.
+                  Selecciona un paciente para acceder a su asistente IA
                 </DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="patient">Paciente</Label>
-                  <Select value={selectedPatientId} onValueChange={setSelectedPatientId}>
+                  <Label>Paciente</Label>
+                  <Select value={selectedPatientForSearch} onValueChange={setSelectedPatientForSearch}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecciona un paciente" />
                     </SelectTrigger>
@@ -210,97 +255,131 @@ export default function Consultations() {
                     </SelectContent>
                   </Select>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="chief_complaint">Motivo de Consulta</Label>
-                  <Textarea
-                    id="chief_complaint"
-                    value={formData.chief_complaint}
-                    onChange={(e) => setFormData({...formData, chief_complaint: e.target.value})}
-                    placeholder="Describe el motivo principal de la consulta..."
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="history_present_illness">Historia de la Enfermedad Actual</Label>
-                  <Textarea
-                    id="history_present_illness"
-                    value={formData.history_present_illness}
-                    onChange={(e) => setFormData({...formData, history_present_illness: e.target.value})}
-                    placeholder="Describe la evolución y síntomas actuales..."
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="physical_examination">Examen Físico</Label>
-                  <Textarea
-                    id="physical_examination"
-                    value={formData.physical_examination}
-                    onChange={(e) => setFormData({...formData, physical_examination: e.target.value})}
-                    placeholder="Hallazgos del examen físico..."
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="assessment">Evaluación/Diagnóstico</Label>
-                  <Textarea
-                    id="assessment"
-                    value={formData.assessment}
-                    onChange={(e) => setFormData({...formData, assessment: e.target.value})}
-                    placeholder="Diagnóstico e impresión clínica..."
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="plan">Plan de Tratamiento</Label>
-                  <Textarea
-                    id="plan"
-                    value={formData.plan}
-                    onChange={(e) => setFormData({...formData, plan: e.target.value})}
-                    placeholder="Tratamiento y seguimiento recomendado..."
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notas Adicionales</Label>
-                  <Textarea
-                    id="notes"
-                    value={formData.notes}
-                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                    placeholder="Observaciones adicionales..."
-                  />
-                </div>
-
                 <div className="flex gap-2 pt-4">
-                  <Button type="submit" disabled={loading}>
-                    {loading ? 'Guardando...' : 'Crear Consulta'}
+                  <Button onClick={handlePatientSelect}>
+                    <Brain className="h-4 w-4 mr-2" />
+                    Ir al Asistente IA
                   </Button>
-                  <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
+                  <Button variant="outline" onClick={() => setShowPatientDialog(false)}>
                     Cancelar
                   </Button>
                 </div>
-              </form>
+              </div>
             </DialogContent>
-            </Dialog>
-          </div>
+          </Dialog>
         </div>
+
+        {/* Search and Filters */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              Búsqueda y Filtros
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Buscar</Label>
+                <Input
+                  placeholder="Buscar por paciente, motivo o diagnóstico..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Filtrar por fecha</Label>
+                <Select value={dateFilter} onValueChange={setDateFilter}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las fechas</SelectItem>
+                    <SelectItem value="today">Hoy</SelectItem>
+                    <SelectItem value="week">Última semana</SelectItem>
+                    <SelectItem value="month">Último mes</SelectItem>
+                    <SelectItem value="custom">Rango personalizado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Insights IA</Label>
+                <Button 
+                  onClick={generateInsights}
+                  disabled={insightsLoading}
+                  className="w-full"
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  {insightsLoading ? 'Analizando...' : 'Generar Análisis'}
+                </Button>
+              </div>
+            </div>
+
+            {dateFilter === 'custom' && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Fecha inicio</Label>
+                  <Input
+                    type="date"
+                    value={selectedStartDate}
+                    onChange={(e) => setSelectedStartDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Fecha fin</Label>
+                  <Input
+                    type="date"
+                    value={selectedEndDate}
+                    onChange={(e) => setSelectedEndDate(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Insights Dialog */}
+        <Dialog open={showInsightsDialog} onOpenChange={setShowInsightsDialog}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5" />
+                Análisis IA de Consultas
+              </DialogTitle>
+              <DialogDescription>
+                Insights generados por IA para el período seleccionado
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="prose prose-sm max-w-none">
+                <div className="whitespace-pre-wrap text-sm">{insights}</div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
         
+        {/* Consultations List */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Lista de Consultas
+              Consultas ({filteredConsultations.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {consultations.length === 0 ? (
+            {filteredConsultations.length === 0 ? (
               <p className="text-muted-foreground">
-                No hay consultas registradas. Crea tu primera consulta médica.
+                {consultations.length === 0 
+                  ? "No hay consultas registradas." 
+                  : "No se encontraron consultas con los filtros aplicados."
+                }
               </p>
             ) : (
               <div className="space-y-4">
-                {consultations.map((consultation) => (
-                  <div key={consultation.id} className="border rounded-lg p-4 space-y-2">
+                {filteredConsultations.map((consultation) => (
+                  <div key={consultation.id} className="border rounded-lg p-4 space-y-2 hover:bg-accent/50 transition-colors">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4" />
@@ -310,7 +389,13 @@ export default function Consultations() {
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="h-4 w-4" />
-                        {new Date(consultation.consultation_date).toLocaleDateString()}
+                        {new Date(consultation.consultation_date).toLocaleDateString('es-ES', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
                       </div>
                     </div>
                     {consultation.chief_complaint && (
