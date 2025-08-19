@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_settings: {
+        Row: {
+          assistant_name: string | null
+          created_at: string
+          id: string
+          model_name: string | null
+          model_provider: string | null
+          specialty_override: string | null
+          system_prompt: string | null
+          temperature: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assistant_name?: string | null
+          created_at?: string
+          id?: string
+          model_name?: string | null
+          model_provider?: string | null
+          specialty_override?: string | null
+          system_prompt?: string | null
+          temperature?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assistant_name?: string | null
+          created_at?: string
+          id?: string
+          model_name?: string | null
+          model_provider?: string | null
+          specialty_override?: string | null
+          system_prompt?: string | null
+          temperature?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       app_usage_logs: {
         Row: {
           action: string
@@ -41,6 +80,48 @@ export type Database = {
           ip_address?: unknown | null
           user_agent?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      appointments: {
+        Row: {
+          created_at: string
+          description: string | null
+          end_time: string
+          id: string
+          location: string | null
+          patient_id: string
+          start_time: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          end_time: string
+          id?: string
+          location?: string | null
+          patient_id: string
+          start_time: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          end_time?: string
+          id?: string
+          location?: string | null
+          patient_id?: string
+          start_time?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
