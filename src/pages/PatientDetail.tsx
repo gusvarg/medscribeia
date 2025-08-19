@@ -85,12 +85,27 @@ export default function PatientDetail() {
     }
   }, [id, user]);
 
-  // Handle URL tab parameter
+  // Handle URL tab parameter and consultation ID
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab');
+    const cidParam = urlParams.get('cid');
+    
     if (tabParam === 'ai-assistant') {
       setActiveTab('ai-assistant');
+    } else if (tabParam === 'consultations') {
+      setActiveTab('consultations');
+      
+      // If there's a consultation ID, scroll to it after a brief delay
+      if (cidParam) {
+        setTimeout(() => {
+          const element = document.getElementById(`consultation-${cidParam}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            element.classList.add('ring-2', 'ring-primary', 'ring-opacity-50');
+          }
+        }, 100);
+      }
     }
   }, []);
 
@@ -407,7 +422,7 @@ export default function PatientDetail() {
                 </Card>
               ) : (
                 consultations.map((consultation) => (
-                  <Card key={consultation.id}>
+                  <Card key={consultation.id} id={`consultation-${consultation.id}`}>
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-lg">
