@@ -25,7 +25,7 @@ export function AdminLayout({ children, requireAdmin = false }: AdminLayoutProps
   }
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+  return <Navigate to="/login" replace />;
   }
 
   const isDenied = requireAdmin && userRole !== 'admin' && userRole !== 'super_admin';

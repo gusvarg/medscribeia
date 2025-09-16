@@ -148,7 +148,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         description: "Has cerrado sesión correctamente.",
       });
       // Force page reload for clean state
-      window.location.href = '/auth';
+  window.location.href = '/login';
     } catch (error) {
       console.error('Error signing out:', error);
     }

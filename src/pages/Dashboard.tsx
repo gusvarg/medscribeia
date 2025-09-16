@@ -30,7 +30,7 @@ const Dashboard = () => {
   }
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+  return <Navigate to="/login" replace />;
   }
 
   const quickStats = [
